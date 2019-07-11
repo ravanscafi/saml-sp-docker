@@ -2,6 +2,7 @@
     "name": "rscafi/saml-sp-docker",
     "type": "project",
     "require": {
+        "php": ">=7.3",
         "onelogin/php-saml": "^3.2"
     },
     "license": "MIT",

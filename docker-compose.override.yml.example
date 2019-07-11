@@ -1,0 +1,8 @@
+version: '3'
+
+services:
+  sp:
+    environment:
+      - IDP_METADATA=http://localhost/saml/idp-metadata.xml
+      - IDP_SSO_URL=http://localhost/login
+      - IDP_X509_CERT='MIIDdjCC etc...'

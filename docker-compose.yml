@@ -1,0 +1,9 @@
+version: '3'
+
+services:
+  sp:
+    image: leroymerlinbr/php:7.3-fpm-nginx
+    volumes:
+      - .:/var/www/html
+    ports:
+      - "8000:80"
