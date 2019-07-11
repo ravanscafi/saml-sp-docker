@@ -1,0 +1,14 @@
+{
+    "name": "rscafi/saml-sp-docker",
+    "type": "project",
+    "require": {
+        "onelogin/php-saml": "^3.2"
+    },
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Ravan Scafi",
+            "email": "rscafi@gmail.com"
+        }
+    ]
+}
