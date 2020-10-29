@@ -10,6 +10,12 @@ and supported by OneLogin Inc.
 Warning
 -------
 
+Version 3.4.0 introduces the 'rejectUnsolicitedResponsesWithInResponseTo' setting parameter, by default disabled, that will allow invalidate unsolicited SAMLResponse. This version as well will reject SAMLResponse if requestId was provided to the validator but the SAMLResponse does not contain a InResponseTo attribute. And an additional setting parameter 'destinationStrictlyMatches', by default disabled, that will force that the Destination URL should strictly match to the address that process the SAMLResponse.
+
+Version 3.3.1 updates xmlseclibs to 3.0.4 (CVE-2019-3465), but php-saml was not directly affected since it implements additional checks that prevent to exploit that vulnerability.
+
+Version 3.3.0 sets strict mode active by default
+
 Update php-saml to 3.1.0, this version includes a security patch related to XEE attacks.
 
 This version is compatible with PHP 7.X and does not include xmlseclibs (you will need to install it via composer, dependency described in composer.json)
@@ -84,7 +90,13 @@ Installation
 
 ### Code ###
 
-#### Option 1. Download from github ####
+#### Option 1. clone the repository from  github ####
+
+git clone git@github.com:onelogin/php-saml.git
+
+Then pull the 3.X.X branch/tag
+
+#### Option 2. Download from github ####
 
 The toolkit is hosted on github. You can download it from:
 
@@ -96,7 +108,10 @@ Copy the core of the library inside the php application. (each application has i
 structure so take your time to locate the PHP SAML toolkit in the best place).
 See the "Guide to add SAML support to my app" to know how.
 
-#### Option 2. Composer ####
+Take in mind that the compressed file only contains the main files.
+If you plan to play with the demos, use the Option 1.
+
+#### Option 3. Composer ####
 
 The toolkit supports [composer](https://getcomposer.org/). You can find the `onelogin/php-saml` package at https://packagist.org/packages/onelogin/php-saml
 
@@ -467,6 +482,16 @@ $advancedSettings = array(
         // attribute will not be rejected for this fact.
         'relaxDestinationValidation' => false,
 
+        // If true, Destination URL should strictly match to the address to
+        // which the response has been sent.
+        // Notice that if 'relaxDestinationValidation' is true an empty Destintation
+        // will be accepted.
+        'destinationStrictlyMatches' => false,
+
+        // If true, SAMLResponses with an InResponseTo value will be rejectd if not
+        // AuthNRequest ID provided to the validation method.
+        'rejectUnsolicitedResponsesWithInResponseTo' => false,
+
         // Algorithm that the toolkit will use on signing process. Options:
         //    'http://www.w3.org/2000/09/xmldsig#rsa-sha1'
         //    'http://www.w3.org/2000/09/xmldsig#dsa-sha1'
@@ -715,8 +740,8 @@ if (!$auth->isAuthenticated()) {
 $_SESSION['samlUserdata'] = $auth->getAttributes();
 $_SESSION['samlNameId'] = $auth->getNameId();
 $_SESSION['samlNameIdFormat'] = $auth->getNameIdFormat();
-$_SESSION['samlNameidNameQualifier' = $auth->getNameIdNameQualifier();
-$_SESSION['samlNameidSPNameQualifier' = $auth->getNameIdSPNameQualifier();
+$_SESSION['samlNameidNameQualifier'] = $auth->getNameIdNameQualifier();
+$_SESSION['samlNameidSPNameQualifier'] = $auth->getNameIdSPNameQualifier();
 $_SESSION['samlSessionIndex'] = $auth->getSessionIndex();
 
 if (isset($_POST['RelayState']) && OneLogin\Saml2\Utils::getSelfURL() != $_POST['RelayState']) {
@@ -976,7 +1001,7 @@ A more complex logout with all the parameters:
 ```
 $auth = new OneLogin\Saml2\Auth();
 $returnTo = null;
-$paramters = array();
+$parameters = array();
 $nameId = null;
 $sessionIndex = null;
 $nameIdFormat = null;
@@ -998,13 +1023,13 @@ if (isset($_SESSION['samlNameIdNameQualifier'])) {
 if (isset($_SESSION['samlNameIdSPNameQualifier'])) {
     $nameIdSPNameQualifier = $_SESSION['samlNameIdSPNameQualifier'];
 }
-$auth->logout($returnTo, $paramters, $nameId, $sessionIndex, false, $nameIdFormat, $nameIdNameQualifier, $nameIdSPNameQualifier);
+$auth->logout($returnTo, $parameters, $nameId, $sessionIndex, false, $nameIdFormat, $nameIdNameQualifier, $nameIdSPNameQualifier);
 ```
 
 If a match on the future LogoutResponse ID and the LogoutRequest ID to be sent is required, that LogoutRequest ID must to be extracted and stored.
 
 ```php
-$sloBuiltUrl = $auth->logout(null, $paramters, $nameId, $sessionIndex, true);
+$sloBuiltUrl = $auth->logout(null, $parameters, $nameId, $sessionIndex, true);
 $_SESSION['LogoutRequestID'] = $auth->getLastRequestID();
 header('Pragma: no-cache');
 header('Cache-Control: no-cache, must-revalidate');
@@ -1106,7 +1131,7 @@ php-saml toolkit uses a bunch of methods in OneLogin\Saml2\Utils that try to gue
 * `getSelfURLNoQuery` Returns the URL of the current host + current view.
 * `getSelfRoutedURLNoQuery` Returns the routed URL of the current host + current view.
 
-getSelfURLNoQuery and getSelfRoutedURLNoQuery are used to calculate the currentURL in order to valdate SAML elements like Destination or Recipient.
+getSelfURLNoQuery and getSelfRoutedURLNoQuery are used to calculate the currentURL in order to validate SAML elements like Destination or Recipient.
 
 When the PHP application is behind a proxy or a load balancer we can execute `setProxyVars(true)` and `setSelfPort` and `isHTTPS` will take care of the `$_SERVER["HTTP_X_FORWARDED_PORT"]` and `$_SERVER['HTTP_X_FORWARDED_PROTO']` vars (otherwise they are ignored).
 
@@ -1408,7 +1433,7 @@ Once the SP is configured, the metadata of the SP is published at the
     process, the `index.php` view.
 
     2.2 in the second link we access to (`attrs.php`) have the same process
-    described at 2.1 with the diference that as `RelayState` is set the `attrs.php`.
+    described at 2.1 with the difference that as `RelayState` is set the `attrs.php`.
 
  3. The SAML Response is processed in the ACS (`index.php?acs`), if the Response
     is not valid, the process stops here and a message is shown. Otherwise we
@@ -1435,7 +1460,7 @@ Once the SP is configured, the metadata of the SP is published at the
     session at of the IdP. Notice that the SLO Workflow starts and ends at the IdP.
 
 Notice that all the SAML Requests and Responses are handled by a unique file,
-the `index.php` file and how `GET` paramters are used to know the action that
+the `index.php` file and how `GET` parameters are used to know the action that
 must be done.
 
 
